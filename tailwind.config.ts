@@ -57,6 +57,11 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        medical: {
+          success: "hsl(var(--medical-success))",
+          warning: "hsl(var(--medical-warning))",
+          info: "hsl(var(--medical-info))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
