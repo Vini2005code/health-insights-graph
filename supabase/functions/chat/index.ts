@@ -6,6 +6,21 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// LGPD: Campos sensíveis removidos antes de enviar à IA
+const LGPD_BLACKLIST = ["name", "cpf", "rg", "telefone", "email", "endereco", "phone", "address"];
+
+function sanitizePatients(patients: Record<string, unknown>[]) {
+  return patients.map((p, i) => {
+    const safe: Record<string, unknown> = { paciente_id: i + 1 };
+    for (const [key, val] of Object.entries(p)) {
+      if (!LGPD_BLACKLIST.includes(key.toLowerCase())) {
+        safe[key] = val;
+      }
+    }
+    return safe;
+  });
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -14,9 +29,9 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    // Get user's auth token to fetch their patients
     const authHeader = req.headers.get("Authorization");
     let patientContext = "";
+    let totalPacientes = 0;
 
     if (authHeader) {
       const supabase = createClient(
@@ -33,25 +48,29 @@ serve(async (req) => {
           .eq("user_id", user.id);
 
         if (patients && patients.length > 0) {
-          patientContext = `\n\nDados dos pacientes do usuário (total: ${patients.length}):\n${JSON.stringify(patients, null, 2)}`;
+          totalPacientes = patients.length;
+          // LGPD: Remove dados pessoais antes de enviar à IA
+          const safePatients = sanitizePatients(patients as Record<string, unknown>[]);
+          patientContext = `\n\nDADOS CLÍNICOS ANONIMIZADOS (LGPD) — Total: ${totalPacientes} pacientes:\n${JSON.stringify(safePatients, null, 2)}`;
         } else {
           patientContext = "\n\nO usuário não tem pacientes cadastrados ainda.";
         }
       }
     }
 
-    const systemPrompt = `Você é o MedChat AI, um assistente inteligente para análise de dados médicos. Você ajuda médicos a entender seus dados de pacientes.
+    const systemPrompt = `Você é o MedChat AI, um assistente inteligente para análise de dados médicos clínicos.
 
-REGRAS:
-1. Responda sempre em português brasileiro
-2. Quando a pergunta envolver dados numéricos ou comparações, SEMPRE pergunte ao usuário se deseja gerar um gráfico
-3. Quando o usuário pedir um gráfico, gere os dados no formato especial abaixo
-4. Sugira o tipo de gráfico mais adequado (bar, pie, donut, line, area)
-5. Seja preciso com os dados - use apenas os dados reais dos pacientes fornecidos
-6. Se não houver dados suficientes, informe o usuário
+REGRAS ESTRITAS:
+1. Responda SEMPRE em português brasileiro
+2. Use APENAS os dados clínicos fornecidos abaixo — NUNCA invente dados
+3. Se não houver dados suficientes, informe o usuário claramente
+4. Seja preciso e objetivo nas análises, como um engenheiro de dados médicos
+5. Quando a pergunta envolver dados numéricos, distribuições ou comparações, SEMPRE pergunte se o usuário deseja um gráfico e sugira o tipo mais adequado
+6. Quando o usuário confirmar ou pedir gráfico, gere no formato especial abaixo
+7. NUNCA revele dados pessoais (nome, CPF, etc.) — os dados já estão anonimizados (LGPD)
 
-FORMATO DE GRÁFICO (use quando solicitado):
-Insira um bloco de código com a tag "chart" contendo um JSON válido:
+FORMATO DE GRÁFICO (use APENAS quando solicitado):
+Insira um bloco de código com a tag "chart" contendo JSON válido:
 \`\`\`chart
 {
   "type": "bar",
@@ -63,6 +82,12 @@ Insira um bloco de código com a tag "chart" contendo um JSON válido:
 \`\`\`
 
 Tipos disponíveis: bar, pie, donut, line, area
+- bar: comparações entre categorias
+- pie/donut: proporções e distribuições percentuais
+- line: tendências ao longo do tempo
+- area: volumes ao longo do tempo
+
+IMPORTANTE: Sempre analise os dados REAIS antes de responder. Conte, agrupe e calcule com precisão.
 ${patientContext}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -78,6 +103,7 @@ ${patientContext}`;
           ...messages,
         ],
         stream: true,
+        temperature: 0.1, // Baixa temperatura = respostas mais precisas e determinísticas
       }),
     });
 
