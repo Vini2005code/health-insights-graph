@@ -12,7 +12,6 @@ const navItems = [
 
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
-  const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
