@@ -11,7 +11,7 @@ const navItems = [
 ];
 
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
-  const { signOut, user } = useAuth();
+  const location = useLocation();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
