@@ -2,7 +2,10 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, UserCheck, UserX, Activity } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Users, UserCheck, UserX, Activity, X } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { renderChartContent, type ChartData } from "@/components/ChartRenderer";
 import {
   BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -20,23 +23,48 @@ type Patient = {
   status: string;
 };
 
+type PinnedChart = {
+  id: string;
+  title: string;
+  chart_type: string;
+  chart_data: any;
+  x_key: string;
+  y_key: string;
+};
+
 const Dashboard = () => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [pinnedCharts, setPinnedCharts] = useState<PinnedChart[]>([]);
 
   useEffect(() => {
     if (!user) return;
     supabase.from("patients").select("age, gender, diagnosis, status").then(({ data }) => {
       if (data) setPatients(data);
     });
+    loadPinnedCharts();
   }, [user]);
+
+  const loadPinnedCharts = async () => {
+    const { data } = await supabase
+      .from("dashboard_charts")
+      .select("*")
+      .order("position");
+    if (data) setPinnedCharts(data as PinnedChart[]);
+  };
+
+  const removePinnedChart = async (id: string) => {
+    await supabase.from("dashboard_charts").delete().eq("id", id);
+    setPinnedCharts((prev) => prev.filter((c) => c.id !== id));
+    toast({ title: "Removido", description: "Gráfico removido do dashboard." });
+  };
 
   const total = patients.length;
   const active = patients.filter((p) => p.status === "ativo").length;
   const discharged = patients.filter((p) => p.status === "alta").length;
   const avgAge = total ? Math.round(patients.reduce((s, p) => s + p.age, 0) / total) : 0;
 
-  // Age distribution
   const ageBuckets = [
     { range: "0-17", count: patients.filter((p) => p.age <= 17).length },
     { range: "18-30", count: patients.filter((p) => p.age >= 18 && p.age <= 30).length },
@@ -45,12 +73,10 @@ const Dashboard = () => {
     { range: "60+", count: patients.filter((p) => p.age > 60).length },
   ];
 
-  // Gender distribution
   const genderData = Object.entries(
     patients.reduce((acc, p) => { acc[p.gender] = (acc[p.gender] || 0) + 1; return acc; }, {} as Record<string, number>)
   ).map(([name, value]) => ({ name: name.charAt(0).toUpperCase() + name.slice(1), value }));
 
-  // Top diagnoses
   const diagCounts = patients
     .filter((p) => p.diagnosis)
     .reduce((acc, p) => { acc[p.diagnosis!] = (acc[p.diagnosis!] || 0) + 1; return acc; }, {} as Record<string, number>);
@@ -85,6 +111,45 @@ const Dashboard = () => {
           </Card>
         ))}
       </div>
+
+      {/* Pinned charts from chat */}
+      {pinnedCharts.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Gráficos Fixados ({pinnedCharts.length}/10)</h2>
+          </div>
+          <div className="grid gap-4 lg:grid-cols-2">
+            {pinnedCharts.map((pc) => {
+              const chartData: ChartData = {
+                type: pc.chart_type as ChartData["type"],
+                title: pc.title,
+                data: pc.chart_data,
+                xKey: pc.x_key,
+                yKey: pc.y_key,
+              };
+              return (
+                <Card key={pc.id}>
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-base">{pc.title}</CardTitle>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                      onClick={() => removePinnedChart(pc.id)}
+                      title="Remover do dashboard"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </CardHeader>
+                  <CardContent>
+                    {renderChartContent(chartData)}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>

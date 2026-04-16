@@ -38,6 +38,42 @@ export type Database = {
         }
         Relationships: []
       }
+      dashboard_charts: {
+        Row: {
+          chart_data: Json
+          chart_type: string
+          created_at: string
+          id: string
+          position: number
+          title: string
+          user_id: string
+          x_key: string
+          y_key: string
+        }
+        Insert: {
+          chart_data: Json
+          chart_type: string
+          created_at?: string
+          id?: string
+          position?: number
+          title: string
+          user_id: string
+          x_key: string
+          y_key: string
+        }
+        Update: {
+          chart_data?: Json
+          chart_type?: string
+          created_at?: string
+          id?: string
+          position?: number
+          title?: string
+          user_id?: string
+          x_key?: string
+          y_key?: string
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           chart_data: Json | null
