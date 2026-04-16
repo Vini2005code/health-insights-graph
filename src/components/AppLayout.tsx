@@ -32,7 +32,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
             <Activity className="h-4 w-4 text-primary-foreground" />
           </div>
-          <span className="text-lg font-semibold">MedChat AI</span>
+          <span className="text-lg font-semibold">Primordial Data</span>
           <Button variant="ghost" size="icon" className="ml-auto md:hidden" onClick={() => setMobileOpen(false)}>
             <X className="h-4 w-4" />
           </Button>
@@ -72,7 +72,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
           <Button variant="ghost" size="icon" onClick={() => setMobileOpen(true)}>
             <Menu className="h-5 w-5" />
           </Button>
-          <span className="ml-2 font-semibold">MedChat AI</span>
+          <span className="ml-2 font-semibold">Primordial Data</span>
         </header>
         <main className="flex-1 overflow-auto">{children}</main>
       </div>
