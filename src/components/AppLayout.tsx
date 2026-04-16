@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Activity, MessageSquare, Users, LayoutDashboard, LogOut, Menu, X } from "lucide-react";
+import { Activity, MessageSquare, Users, LayoutDashboard, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -12,7 +11,6 @@ const navItems = [
 ];
 
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
-  const { signOut, user } = useAuth();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -57,13 +55,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
           ))}
         </nav>
 
-        <div className="border-t p-3">
-          <div className="mb-2 truncate px-3 text-xs text-muted-foreground">{user?.email}</div>
-          <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground" onClick={signOut}>
-            <LogOut className="h-4 w-4" />
-            Sair
-          </Button>
-        </div>
+        <div className="border-t p-3" />
       </aside>
 
       {/* Main content */}

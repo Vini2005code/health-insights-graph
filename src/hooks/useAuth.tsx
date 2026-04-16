@@ -30,9 +30,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(false);
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session) {
+        // Auto sign-in anonymously so DB operations work
+        const { data } = await supabase.auth.signInAnonymously();
+        setSession(data.session);
+        setUser(data.session?.user ?? null);
+      } else {
+        setSession(session);
+        setUser(session?.user ?? null);
+      }
       setLoading(false);
     });
 
