@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Activity, MessageSquare, Users, LayoutDashboard, LogOut, Menu, X } from "lucide-react";
+import { Activity, MessageSquare, Users, LayoutDashboard, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
