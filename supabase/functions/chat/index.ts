@@ -58,7 +58,7 @@ serve(async (req) => {
       }
     }
 
-    const systemPrompt = `Você é o MedChat AI, um assistente inteligente especializado em análise de dados clínicos.
+    const systemPrompt = `Você é o Primordial Data, um assistente inteligente especializado em análise de dados clínicos.
 
 Seu papel NÃO é atuar como médico. Você é um ANALISTA DE DADOS MÉDICOS.
 Você NÃO faz diagnósticos, apenas analisa padrões e informações presentes nos dados fornecidos.
