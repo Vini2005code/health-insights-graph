@@ -110,33 +110,174 @@ const ChartRenderer = ({ chart, showPin = true }: { chart: ChartData; showPin?: 
 
   const exportPDF = async () => {
     if (!chartRef.current) return;
-    const canvas = await html2canvas(chartRef.current, { scale: 2, backgroundColor: "#ffffff" });
+
+    toast({ title: "Gerando PDF...", description: "Capturando o gráfico em alta resolução." });
+
+    const canvas = await html2canvas(chartRef.current, {
+      scale: 3,
+      backgroundColor: "#ffffff",
+      useCORS: true,
+      logging: false,
+    });
     const imgData = canvas.toDataURL("image/png");
+
     const pdf = new jsPDF("landscape", "mm", "a4");
     const pdfW = pdf.internal.pageSize.getWidth();
     const pdfH = pdf.internal.pageSize.getHeight();
 
+    // Brand colors (matches design system: primary hsl(210,78%,46%))
+    const PRIMARY: [number, number, number] = [25, 99, 178];
+    const ACCENT: [number, number, number] = [26, 175, 152];
+    const TEXT_DARK: [number, number, number] = [30, 41, 59];
+    const TEXT_MUTED: [number, number, number] = [100, 116, 139];
+    const BORDER: [number, number, number] = [226, 232, 240];
+    const ROW_ALT: [number, number, number] = [248, 250, 252];
+
+    // === HEADER BAR ===
+    pdf.setFillColor(...PRIMARY);
+    pdf.rect(0, 0, pdfW, 18, "F");
+    pdf.setFillColor(...ACCENT);
+    pdf.rect(0, 18, pdfW, 1.5, "F");
+
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(14);
+    pdf.text("Primordial Data", 12, 11.5);
+
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(9);
+    pdf.text("Relatório Analítico", pdfW - 12, 11.5, { align: "right" });
+
+    // === TITLE BLOCK ===
+    pdf.setTextColor(...TEXT_DARK);
+    pdf.setFont("helvetica", "bold");
     pdf.setFontSize(18);
-    pdf.text(chart.title, pdfW / 2, 15, { align: "center" });
+    pdf.text(chart.title, pdfW / 2, 30, { align: "center" });
+
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(9);
+    pdf.setTextColor(...TEXT_MUTED);
+    const now = new Date();
+    const dateStr = now.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
+    const timeStr = now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    pdf.text(`Gerado em ${dateStr} às ${timeStr}`, pdfW / 2, 36, { align: "center" });
+
+    // Decorative divider
+    pdf.setDrawColor(...BORDER);
+    pdf.setLineWidth(0.3);
+    pdf.line(pdfW / 2 - 25, 39, pdfW / 2 + 25, 39);
+
+    // === CHART IMAGE ===
+    const chartTop = 44;
+    const chartMaxH = 110;
+    const maxImgW = pdfW - 40;
+    const ratio = canvas.height / canvas.width;
+    let imgW = maxImgW;
+    let imgH = imgW * ratio;
+    if (imgH > chartMaxH) {
+      imgH = chartMaxH;
+      imgW = imgH / ratio;
+    }
+    const imgX = (pdfW - imgW) / 2;
+
+    // Subtle shadow box behind chart
+    pdf.setFillColor(245, 247, 250);
+    pdf.roundedRect(imgX - 3, chartTop - 2, imgW + 6, imgH + 4, 2, 2, "F");
+    pdf.addImage(imgData, "PNG", imgX, chartTop, imgW, imgH);
+
+    // === DATA TABLE ===
+    const tableTop = chartTop + imgH + 8;
+    const totalNumeric = chart.data.reduce((s, r) => {
+      const v = Number(r[chart.yKey]);
+      return s + (isNaN(v) ? 0 : v);
+    }, 0);
+
+    // Section header
+    pdf.setTextColor(...TEXT_DARK);
+    pdf.setFont("helvetica", "bold");
     pdf.setFontSize(10);
-    pdf.text(`Gerado em: ${new Date().toLocaleString("pt-BR")}`, pdfW / 2, 22, { align: "center" });
+    pdf.text("Dados Detalhados", 20, tableTop);
 
-    const imgW = pdfW - 40;
-    const imgH = (canvas.height / canvas.width) * imgW;
-    pdf.addImage(imgData, "PNG", 20, 30, imgW, Math.min(imgH, pdfH - 50));
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(8);
+    pdf.setTextColor(...TEXT_MUTED);
+    pdf.text(`${chart.data.length} ${chart.data.length === 1 ? "registro" : "registros"}`, pdfW - 20, tableTop, { align: "right" });
 
-    const startY = Math.min(imgH + 40, pdfH - 30);
-    if (startY < pdfH - 15) {
-      pdf.setFontSize(9);
-      chart.data.forEach((row, i) => {
-        const y = startY + i * 5;
-        if (y < pdfH - 10) {
-          pdf.text(`${row[chart.xKey]}: ${row[chart.yKey]}`, 20, y);
-        }
-      });
+    // Table
+    const tableY = tableTop + 3;
+    const colW = [pdfW * 0.4, pdfW * 0.2, pdfW * 0.2];
+    const colX = [20, 20 + colW[0], 20 + colW[0] + colW[1]];
+    const rowH = 5.5;
+
+    // Header row
+    pdf.setFillColor(...PRIMARY);
+    pdf.rect(20, tableY, pdfW - 40, rowH, "F");
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(8.5);
+    pdf.text(String(chart.xKey).toUpperCase(), colX[0] + 2, tableY + 3.7);
+    pdf.text(String(chart.yKey).toUpperCase(), colX[1] + 2, tableY + 3.7);
+    pdf.text("PARTICIPAÇÃO", colX[2] + 2, tableY + 3.7);
+
+    // Data rows
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(8);
+    let y = tableY + rowH;
+    const maxRows = Math.floor((pdfH - y - 18) / rowH);
+    const visible = chart.data.slice(0, maxRows);
+
+    visible.forEach((row, i) => {
+      if (i % 2 === 0) {
+        pdf.setFillColor(...ROW_ALT);
+        pdf.rect(20, y, pdfW - 40, rowH, "F");
+      }
+      const val = Number(row[chart.yKey]);
+      const pct = totalNumeric > 0 && !isNaN(val) ? ((val / totalNumeric) * 100).toFixed(1) : "—";
+      pdf.setTextColor(...TEXT_DARK);
+      pdf.text(String(row[chart.xKey]), colX[0] + 2, y + 3.7);
+      pdf.text(String(row[chart.yKey]), colX[1] + 2, y + 3.7);
+      pdf.setTextColor(...TEXT_MUTED);
+      pdf.text(pct === "—" ? "—" : `${pct}%`, colX[2] + 2, y + 3.7);
+      y += rowH;
+    });
+
+    // Totals row
+    if (visible.length === chart.data.length && totalNumeric > 0) {
+      pdf.setFillColor(...BORDER);
+      pdf.rect(20, y, pdfW - 40, rowH, "F");
+      pdf.setFont("helvetica", "bold");
+      pdf.setTextColor(...TEXT_DARK);
+      pdf.text("TOTAL", colX[0] + 2, y + 3.7);
+      pdf.text(String(totalNumeric), colX[1] + 2, y + 3.7);
+      pdf.text("100.0%", colX[2] + 2, y + 3.7);
+      y += rowH;
     }
 
-    pdf.save(`${chart.title.replace(/\s+/g, "_")}.pdf`);
+    // Truncation note
+    if (visible.length < chart.data.length) {
+      pdf.setFont("helvetica", "italic");
+      pdf.setFontSize(7);
+      pdf.setTextColor(...TEXT_MUTED);
+      pdf.text(`+ ${chart.data.length - visible.length} registros adicionais omitidos`, 20, y + 4);
+    }
+
+    // === FOOTER ===
+    const footerY = pdfH - 8;
+    pdf.setDrawColor(...BORDER);
+    pdf.setLineWidth(0.2);
+    pdf.line(20, footerY - 4, pdfW - 20, footerY - 4);
+
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(7.5);
+    pdf.setTextColor(...TEXT_MUTED);
+    pdf.text("Primordial Data — Análise Inteligente de Dados Clínicos", 20, footerY);
+    pdf.text(`Página 1 de 1`, pdfW - 20, footerY, { align: "right" });
+
+    const safeName = chart.title.replace(/[^\w\s-]/g, "").replace(/\s+/g, "_");
+    const stamp = now.toISOString().slice(0, 10);
+    pdf.save(`${safeName}_${stamp}.pdf`);
+
+    toast({ title: "PDF exportado!", description: "O download começou automaticamente." });
   };
 
   const pinToDashboard = async () => {
