@@ -29,9 +29,17 @@ const COLORS = [
 export const renderChartContent = (chart: ChartData) => {
   const { type, data, xKey, yKey } = chart;
 
+  // Altura dinâmica conforme volume de dados
+  const count = data.length;
+  const height =
+    type === "pie" || type === "donut"
+      ? Math.min(480, 320 + Math.max(0, count - 6) * 8)
+      : Math.min(520, 320 + Math.max(0, count - 8) * 6);
+
   if (type === "pie" || type === "donut") {
+    const compact = count > 8;
     return (
-      <ResponsiveContainer width="100%" height={300}>
+      <ResponsiveContainer width="100%" height={height}>
         <PieChart>
           <Pie
             data={data}
@@ -39,31 +47,59 @@ export const renderChartContent = (chart: ChartData) => {
             nameKey={xKey}
             cx="50%"
             cy="50%"
-            outerRadius={100}
-            innerRadius={type === "donut" ? 50 : 0}
-            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+            outerRadius={compact ? 110 : 100}
+            innerRadius={type === "donut" ? (compact ? 60 : 50) : 0}
+            label={
+              compact
+                ? ({ percent }) => `${(percent * 100).toFixed(0)}%`
+                : ({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`
+            }
+            labelLine={!compact}
           >
             {data.map((_, i) => (
               <Cell key={i} fill={COLORS[i % COLORS.length]} />
             ))}
           </Pie>
           <Tooltip />
-          <Legend />
+          <Legend
+            layout={compact ? "vertical" : "horizontal"}
+            align={compact ? "right" : "center"}
+            verticalAlign={compact ? "middle" : "bottom"}
+            wrapperStyle={compact ? { fontSize: 11, maxHeight: height - 40, overflowY: "auto" } : { fontSize: 12 }}
+          />
         </PieChart>
       </ResponsiveContainer>
     );
   }
 
+  // XAxis adaptativo: rotaciona rótulos quando há muitas categorias
+  const manyCats = count > 10;
+  const xAxisProps = {
+    dataKey: xKey,
+    interval: 0 as const,
+    angle: manyCats ? -35 : 0,
+    textAnchor: manyCats ? ("end" as const) : ("middle" as const),
+    height: manyCats ? 80 : 30,
+    tick: { fontSize: manyCats ? 11 : 12 },
+  };
+
   if (type === "line") {
     return (
-      <ResponsiveContainer width="100%" height={300}>
-        <LineChart data={data}>
+      <ResponsiveContainer width="100%" height={height}>
+        <LineChart data={data} margin={{ top: 10, right: 20, left: 0, bottom: manyCats ? 20 : 5 }}>
           <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey={xKey} />
+          <XAxis {...xAxisProps} />
           <YAxis />
           <Tooltip />
           <Legend />
-          <Line type="monotone" dataKey={yKey} stroke={COLORS[0]} strokeWidth={2} dot={{ r: 4 }} />
+          <Line
+            type="monotone"
+            dataKey={yKey}
+            stroke={COLORS[0]}
+            strokeWidth={2}
+            dot={count > 30 ? false : { r: 3 }}
+            activeDot={{ r: 5 }}
+          />
         </LineChart>
       </ResponsiveContainer>
     );
@@ -71,10 +107,10 @@ export const renderChartContent = (chart: ChartData) => {
 
   if (type === "area") {
     return (
-      <ResponsiveContainer width="100%" height={300}>
-        <AreaChart data={data}>
+      <ResponsiveContainer width="100%" height={height}>
+        <AreaChart data={data} margin={{ top: 10, right: 20, left: 0, bottom: manyCats ? 20 : 5 }}>
           <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey={xKey} />
+          <XAxis {...xAxisProps} />
           <YAxis />
           <Tooltip />
           <Legend />
@@ -85,10 +121,10 @@ export const renderChartContent = (chart: ChartData) => {
   }
 
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <BarChart data={data}>
+    <ResponsiveContainer width="100%" height={height}>
+      <BarChart data={data} margin={{ top: 10, right: 20, left: 0, bottom: manyCats ? 20 : 5 }}>
         <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey={xKey} />
+        <XAxis {...xAxisProps} />
         <YAxis />
         <Tooltip />
         <Legend />
