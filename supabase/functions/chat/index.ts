@@ -116,10 +116,18 @@ Se o usuário solicitar um gráfico, gere SOMENTE um bloco no formato abaixo:
 \`\`\`
 
 Tipos disponíveis:
-- bar: comparações entre categorias
-- pie/donut: proporções e distribuições percentuais
-- line: tendências ao longo do tempo
-- area: volumes ao longo do tempo
+- bar: comparações entre categorias (até 30 categorias)
+- pie/donut: proporções e distribuições percentuais (até 15 fatias — agrupe o restante em "Outros" se exceder)
+- line: tendências ao longo do tempo (até 50 pontos)
+- area: volumes ao longo do tempo (até 50 pontos)
+
+REGRAS DE GRANULARIDADE (MUITO IMPORTANTE):
+- SEMPRE inclua o MÁXIMO de categorias relevantes presentes nos dados, não resuma artificialmente.
+- Para bar: liste TODAS as categorias distintas encontradas (ex: todos os diagnósticos, todas as faixas etárias, todos os status), até 30.
+- Para pie/donut: se houver mais de 15 categorias, mostre as 14 maiores e some o resto em "Outros".
+- Para line/area (séries temporais): use a granularidade mais fina possível dos dados (por dia, semana ou mês conforme o range).
+- NUNCA reduza para apenas 3–5 categorias se houver mais dados disponíveis.
+- Ordene os dados de forma lógica: bar/pie por valor decrescente; line/area por data crescente.
 
 IMPORTANTE: Sempre analise os dados REAIS antes de responder. Conte, agrupe e calcule com precisão.
 ${patientContext}`;
